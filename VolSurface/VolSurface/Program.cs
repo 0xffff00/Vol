@@ -11,7 +11,7 @@ namespace VolSurface
         static void Main(string[] args)
         {
             int[] time = new int[2] { 100000000, 140000000 };
-            ImpvCurve myCurve = new ImpvCurve(20150629,time);
+            ImpvCurve myCurve = new ImpvCurve(20160422,time);
         }
     }
 }

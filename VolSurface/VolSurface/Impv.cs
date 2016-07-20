@@ -47,7 +47,8 @@ namespace VolSurface
                 etfPrice = Convert.ToDouble(etfData.last) * Math.Exp(-rf * duration / 252.0);
                 r = 0.02;
             }
-            impv = sigma(etfPrice, ComputeMidPrice(optionData.ask,optionData.bid), option.strike, duration, r,option.optionType);
+          //  impv = sigma(etfPrice, ComputeMidPrice(optionData.ask,optionData.bid), option.strike, duration, r,option.optionType);
+            impv = approximateSigma(etfPrice, ComputeMidPrice(optionData.ask, optionData.bid), option.strike, duration, r, option.optionType);
             return impv;
         }
         public double ComputeMidPrice(double ask, double bid)
@@ -66,6 +67,56 @@ namespace VolSurface
                 midPrice = bid;
             }
             return midPrice;
+        }
+        public static double approximateSigma(double etfPrice, double optionPrice, double strike, double duration, double r, string optionType)
+        {
+            double sigma = 0.0;
+            duration /= 252.0;//调整为年化的时间。
+            if (optionType.Equals("认沽"))
+            {
+                optionPrice = optionPrice + etfPrice - strike * Math.Exp(-r * duration);
+                if (strike * Math.Exp(-r * duration) - etfPrice > optionPrice)
+                {
+                    return 0;
+                }
+            }
+            else
+            {
+                if (optionPrice < etfPrice - strike * Math.Exp(-r * duration))
+                {
+                    return 0;
+                }
+            }
+
+            double eta = strike * Math.Exp(-r * duration) / etfPrice;
+            double rho = Math.Abs(eta - 1) / Math.Pow((optionPrice / etfPrice), 2);
+            double alpha = Math.Sqrt(2 * Math.PI) / (1 + eta) * (2 * optionPrice / etfPrice + eta - 1);
+            double beta = Math.Cos(Math.Acos(3 * alpha / Math.Sqrt(32)) / 3);
+            if (rho <= 1.4)
+            {
+                double radicand = 8 * beta * beta - 6 * alpha / (Math.Sqrt(2) * beta);
+                if (radicand < 0)
+                {
+                    return sigma;
+                }
+                else
+                {
+                    sigma = Math.Sqrt(8 / duration) * beta - Math.Sqrt(radicand / duration);
+                }
+            }
+            else
+            {
+                double radicand = alpha * alpha - 4 * Math.Pow(eta - 1, 2) / (1 + eta);
+                if (radicand < 0)
+                {
+                    return sigma;
+                }
+                else
+                {
+                    sigma = (alpha + Math.Sqrt(radicand)) / (2 * Math.Sqrt(duration));
+                }
+            }
+            return sigma;
         }
 
         /// <summary>
